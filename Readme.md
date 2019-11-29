@@ -5,7 +5,7 @@ Clonar este repositorio.
 Abrir con Android Studio
 
 ## Update
- En actualizar variable AUTH_APOLLO en: /app/src/main/java/com/example/githubsearch/utilities/Constants.kt
+ Actualizar variable AUTH_APOLLO en: /app/src/main/java/com/example/githubsearch/utilities/Constants.kt
  
  AUTH_APOLLO = ``OAUTH ACCES TOKEN``
   
