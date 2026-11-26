@@ -14,6 +14,11 @@ android {
         versionCode 2
         versionName "2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // GitHub personal access token for the GraphQL API, taken from the
+        // GITHUB_TOKEN environment variable or the githubToken Gradle property.
+        def githubToken = System.getenv("GITHUB_TOKEN") ?: (project.findProperty("githubToken") ?: "")
+        buildConfigField "String", "GITHUB_TOKEN", "\"${githubToken}\""
     }
     buildTypes {
         release {
