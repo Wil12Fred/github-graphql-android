@@ -15,6 +15,7 @@ import com.example.githubsearch.R
 import com.example.githubsearch.adapters.GithubRepoAdapter
 import com.example.githubsearch.models.GithubRepo
 import com.example.githubsearch.models.GithubUser
+import com.example.githubsearch.models.SearchResults
 import com.example.githubsearch.utilities.ApolloUtils
 import kotlinx.android.synthetic.main.activity_repositories.*
 
@@ -69,19 +70,17 @@ class RepositoriesActivity : AppCompatActivity() {
                 override fun onResponse(response: Response<ListRepoUserQuery.Data>) {
                     runOnUiThread({
                         Log.d("LOADREPO: ", response.toString())
-                        var search = response?.data()?.search()?.edges()
-                        var repositoriesSize = search?.size!!
-                        if(repositoriesSize>0){
-                            search?.forEach{
-                                it->
-                                var repository = it?.node()?.fragments()?.repo()
-                                repoList.add(0,GithubRepo(repoList.size,
-                                repository?.id()!!,
-                                repository?.name()!!,
-                                repository?.owner()?.login()!!,
-                                repository?.description()!!))
-                                adapter.notifyItemRangeInserted(0, repositoriesSize!! - 1)
-                            }
+                        var search = response.data()?.search()?.edges().orEmpty()
+                        val page = search.mapIndexedNotNull { i, it ->
+                            val repository = it?.node()?.fragments()?.repo()
+                            SearchResults.toRepo(repoList.size + i,
+                                repository?.id(),
+                                repository?.name(),
+                                repository?.owner()?.login(),
+                                repository?.description())
+                        }
+                        if (page.isNotEmpty()) {
+                            adapter.notifyItemRangeInserted(0, SearchResults.prependPage(repoList, page))
                         }
                     })
                 }

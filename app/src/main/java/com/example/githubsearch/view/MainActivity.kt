@@ -11,6 +11,7 @@ import com.apollographql.apollo.api.Response
 import com.apollographql.apollo.exception.ApolloException
 import com.example.githubsearch.adapters.GithubUserAdapter
 import com.example.githubsearch.models.GithubUser
+import com.example.githubsearch.models.SearchResults
 import kotlinx.android.synthetic.main.github_user_layout.*
 import okhttp3.OkHttpClient
 import java.util.logging.Logger
@@ -30,7 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var context:  Context
     private lateinit var listView: RecyclerView
     private lateinit var adapter : GithubUserAdapter
-    private lateinit var lastVisible : String
+    private var lastVisible : String? = null
     //private lateinit var refreshLayout : SwipeRefreshLayout
 
     companion object {
@@ -44,7 +45,7 @@ class MainActivity : AppCompatActivity() {
 
     fun loadUsersAfterFilter(client: ApolloClient, after: String){
         progress_bar.visibility = View.VISIBLE
-        var pagesize = 5
+        var pagesize = SearchResults.USER_PAGE_SIZE
         client.query(ListUserAfterQuery
             .builder()
             .owner(owner_name_edittext.text.toString())
@@ -60,19 +61,18 @@ class MainActivity : AppCompatActivity() {
                     //TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
                     runOnUiThread({
                         progress_bar.visibility = View.GONE
-                        var edges = response.data()?.search()?.edges()
-                        if((edges?.size!!>0)) {
-                            edges?.forEach {
-                                    it ->
-                                var profile = it?.node()?.fragments()?.profile()
-                                userList.add(0, GithubUser(userList.size, profile?.id()!!, profile?.name()!!, 7, profile?.login()))
-                            }
+                        var edges = response.data()?.search()?.edges().orEmpty()
+                        val page = edges.mapIndexedNotNull { i, it ->
+                            val profile = it?.node()?.fragments()?.profile()
+                            SearchResults.toUser(userList.size + i, profile?.id(), profile?.name(), profile?.login())
+                        }
+                        if (page.isNotEmpty()) {
                             var recyclerViewState =
                                 listView.getLayoutManager()!!.onSaveInstanceState();
-                            adapter.notifyItemRangeInserted(0, edges?.size!! - 1)
+                            adapter.notifyItemRangeInserted(0, SearchResults.prependPage(userList, page))
                             listView.layoutManager!!.onRestoreInstanceState(recyclerViewState)
-                            (listView.layoutManager as LinearLayoutManager).scrollToPosition(edges?.size!! - 1)
-                            lastVisible = response?.data()?.search()?.pageInfo()?.endCursor()!!
+                            (listView.layoutManager as LinearLayoutManager).scrollToPosition(page.size - 1)
+                            lastVisible = response.data()?.search()?.pageInfo()?.endCursor()
                         }
                     })
                 }
@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity() {
 
     fun loadUsersFilter(client: ApolloClient){
         progress_bar.visibility = View.VISIBLE
-        var pagesize = 5
+        var pagesize = SearchResults.USER_PAGE_SIZE
         client.query(ListUserQuery
             .builder()
             .owner(owner_name_edittext.text.toString())
@@ -97,20 +97,18 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread({
                         progress_bar.visibility = View.GONE
                         Log.info("Response: " + response.data()?.search())
-                        var edges = response.data()?.search()?.edges()
-                        var currentPosition = userList.size
-                        if((edges?.size!!>0)){
-                            edges?.forEach {
-                                    it ->
-                                var profile = it?.node()?.fragments()?.profile()
-                                userList.add(0, GithubUser(userList.size, profile?.id()!!, profile?.name()!!, 7, profile?.login()))
-                            }
+                        var edges = response.data()?.search()?.edges().orEmpty()
+                        val page = edges.mapIndexedNotNull { i, it ->
+                            val profile = it?.node()?.fragments()?.profile()
+                            SearchResults.toUser(userList.size + i, profile?.id(), profile?.name(), profile?.login())
+                        }
+                        if (page.isNotEmpty()) {
+                            adapter.notifyItemRangeInserted(0, SearchResults.prependPage(userList, page))
                             Log.info("listView " + userList.size)
-                            adapter.notifyItemRangeInserted(0, edges?.size!! - 1)
                                 (listView.layoutManager as LinearLayoutManager).scrollToPosition(
-                                    edges?.size!! - 1
+                                    page.size - 1
                                 )
-                                lastVisible = response?.data()?.search()?.pageInfo()?.endCursor()!!
+                                lastVisible = response.data()?.search()?.pageInfo()?.endCursor()
                         }
                     })
                 }
@@ -140,9 +138,10 @@ class MainActivity : AppCompatActivity() {
                     //Log.info("1 " + positionView)
                 } else {
                     //Log.info("2 " + positionView)
-                    if ((positionView==0)  and (userList.size<50)){
+                    val cursor = lastVisible
+                    if (cursor != null && SearchResults.shouldLoadNextPage(positionView, userList.size, cursor)){
                         Log.info("listView " + userList.size)
-                        loadUsersAfterFilter(client, lastVisible)
+                        loadUsersAfterFilter(client, cursor)
                     }
                 }
             }
@@ -150,6 +149,7 @@ class MainActivity : AppCompatActivity() {
         button_find.setOnClickListener({
             github_image_view.visibility = View.GONE
             userList.clear()
+            lastVisible = null
             adapter.notifyDataSetChanged()
             hideKeyboard()
             if (owner_name_edittext.text.toString().equals("")){
