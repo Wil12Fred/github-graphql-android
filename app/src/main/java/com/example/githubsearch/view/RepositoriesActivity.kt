@@ -16,7 +16,6 @@ import com.example.githubsearch.adapters.GithubRepoAdapter
 import com.example.githubsearch.models.GithubRepo
 import com.example.githubsearch.models.GithubUser
 import com.example.githubsearch.utilities.ApolloUtils
-import fragment.RepositoryDetail
 import kotlinx.android.synthetic.main.activity_repositories.*
 
 
