@@ -1,4 +1,6 @@
-# GitHub GraphQL user search (Android)
+# github-graphql-android
+
+> GitHub GraphQL user search (Android)
 
 An Android app written as a take-home exercise for a job interview
 (November 2019). It queries the **GitHub GraphQL API v4** with
